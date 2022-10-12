@@ -1,0 +1,1 @@
+the majority of conroe microprocessors have a lga 775 socket .

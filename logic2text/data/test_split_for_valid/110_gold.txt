@@ -1,0 +1,1 @@
+the conroe - l processor is the only processor with exactly 1 core .

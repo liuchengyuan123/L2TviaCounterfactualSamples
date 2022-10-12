@@ -1,0 +1,1 @@
+the microsoft windows version with ntfs v1 .2 is the only one with partial hpfs support .

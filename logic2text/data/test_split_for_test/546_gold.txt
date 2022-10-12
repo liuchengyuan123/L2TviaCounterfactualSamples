@@ -1,0 +1,1 @@
+all craters have a name that starts with the letter " x " .

@@ -1,0 +1,1 @@
+four of the microsoft windows versions had support for fat32 .

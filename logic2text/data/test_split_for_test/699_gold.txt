@@ -1,0 +1,1 @@
+all of the microsoft windows versions had support for fat16 .

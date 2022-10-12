@@ -1,0 +1,1 @@
+all of the intel atom microprocessors are made with an l2 cache of 512 kb .

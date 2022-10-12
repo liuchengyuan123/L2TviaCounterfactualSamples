@@ -1,0 +1,1 @@
+for the floating point the combined number of total bits was 320 .

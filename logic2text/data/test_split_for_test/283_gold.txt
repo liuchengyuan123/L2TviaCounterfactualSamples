@@ -1,0 +1,1 @@
+2 amd mobile microprocessor models have a mult 1 value of 8x .

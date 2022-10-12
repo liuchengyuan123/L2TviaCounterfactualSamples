@@ -1,0 +1,6 @@
+date
+time
+year
+originalairdate
+airdate
+broadcast

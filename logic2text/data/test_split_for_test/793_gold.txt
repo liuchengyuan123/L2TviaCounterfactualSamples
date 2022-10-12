@@ -1,0 +1,1 @@
+the average number of floors for buildings that have been the tallest buildings in boston , is 21.43 .
