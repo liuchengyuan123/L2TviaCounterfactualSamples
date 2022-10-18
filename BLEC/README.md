@@ -1,0 +1,1 @@
+Inherited from "Logic-Consistency Text Generation from Semantic Parses"
