@@ -220,6 +220,7 @@ class EncoderAttnMaskT5Stack(T5Stack):
             cross_attentions=all_cross_attentions,
         )
 
+#  to enable beam search, we inherent `T5ForConditionalGeneration`
 class AMT5ForConditionalGeneration(T5ForConditionalGeneration):
     def __init__(self, config):
         super().__init__(config)
@@ -284,21 +285,8 @@ class SequencePipeline(object):
         attention_mask = batch_dict['attention_mask']
         lm_loss = self.model(input_ids=x, labels=decoder_output, attention_mask=attention_mask).loss
 
-        # level task
-        x = batch_dict['level_enc_in']
-        decoder_output = batch_dict['level_dec_out']
-        attention_mask = batch_dict['level_attention_mask']
-        level_loss = self.model(input_ids=x, labels=decoder_output, attention_mask=attention_mask).loss
-
-        x = batch_dict['chain_enc_in']
-        decoder_output = batch_dict['chain_dec_out']
-        attention_mask = batch_dict['chain_attention_mask']
-        chain_loss = self.model(input_ids=x, labels=decoder_output, attention_mask=attention_mask).loss
-
         return {
             'lm_loss': lm_loss,
-            'level_loss': level_loss,
-            'chain_loss': chain_loss
         }
 
     def decode_batch(self, batch_dict, prefix_mode=''):
