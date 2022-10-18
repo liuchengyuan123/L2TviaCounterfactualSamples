@@ -85,5 +85,10 @@ test on LCD
 python main.py --mode=test --load-ckpt=$load_ckpt --data-path=CD/data
 ```
 
+## Contact
+If you have any issues or questions about this repo, feel free to contact liucy1@zju.edu.cn.
+
+## License
+[Apache License 2.0](./LICENSE) 
 
 

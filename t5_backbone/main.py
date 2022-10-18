@@ -388,13 +388,8 @@ def main():
                     
                     # train_t.set_postfix_str('loss: %.4f' % )
                     writer.flush()
-                    rdnm = np.random.rand()
-                    if rdnm < args.alpha:
-                        use_loss = 'level_loss'
-                    elif rdnm < args.alpha + args.beta:
-                        use_loss = 'chain_loss'
-                    else:
-                        use_loss = 'lm_loss'
+                    
+                    use_loss = 'lm_loss'
                     total_loss = loss_dict[use_loss]
                     total_loss.backward()
                     optimizer_fd.step()
