@@ -60,12 +60,9 @@ class DataLoader:
 
             # # strip data if needed
             # self.editor: Edition = EDIT_class()
-            if edit_strategy == 'rep':
-                self.editor = normEdition(prob=edit_prob)
-            elif edit_strategy == 'rand':
+            
+            if edit_strategy == 'rand':
                 self.editor = RDEdition(prob=edit_prob)
-            elif edit_strategy == 'expand':
-                self.editor = expandEdition(prob=edit_prob)
             elif edit_strategy == 'mix':
                 self.editor = MixedEdition(prob=edit_prob)
             elif edit_strategy == 'dtype':
@@ -170,95 +167,6 @@ class DataLoader:
             'table': [self.encoder.encode(linear_table_in(d['table_cont']))[0] for d in batch_in],
         }
 
-        if self.all_task:
-            # prepare input for level task
-            level_task_in = []
-            level_task_out = []
-
-            chain_task_in, chain_task_out = [], []
-
-            for d in batch_in:
-                logic = d['logic_str'][:-6]
-                # seperate '= true'
-                tokens: list = [t for t in re.split(r'{|}|;| ', logic) if t != '']
-                tok = np.random.choice(tokens)
-                raw_tokens: list = logic.split(' ')
-                inx, outy = "analyse token ' %s ': " % tok, None
-                pos = raw_tokens.index(tok)
-                raw_token_len = len(raw_tokens)
-                # type
-                if raw_tokens[pos + 1] == '{':
-                    # operator
-                    domain_t = []
-                    i = pos + 2
-                    level = 0
-                    for i in range(pos+2, raw_token_len):
-                        if raw_tokens[i] == '{':
-                            level += 1
-                        elif raw_tokens[i] == '}':
-                            level -= 1
-                            if level < 0:
-                                break
-                        elif level == 0 and raw_tokens[i] != ';':
-                            domain_t.append(raw_tokens[i])
-                    outy = "token ' %s ' is operator, occupies: %s" % (tok, ', '.join(domain_t))
-                else:
-                    # common value
-                    pre_oper = None
-                    i = 0
-                    stack = deque()
-                    for i in range(raw_token_len):
-                        if raw_tokens[i] == '{':
-                            stack.append(i)
-                        elif raw_tokens[i] == '}':
-                            stack.pop()
-                        elif i == pos:
-                            pre_oper = stack.pop()
-                            break
-                    outy = "token ' %s ' is argument, occupied by: %s" % (tok, raw_tokens[pre_oper - 1])
-                level_task_in.append(inx)
-                level_task_out.append(outy)
-
-                # for chain path interpret
-                tok = np.random.choice(tokens, 2)
-                tok_a, tok_b = tok[0], tok[1]
-                pos_a = raw_tokens.index(tok_a)
-                pos_b = raw_tokens.index(tok_b)
-                path_a, path_b = [tok_a], [tok_b]
-                inx = "find path from ' %s ' to ' %s ': " % (tok_a, tok_b)
-                pre_oper = deque()
-                pre_oper.append(-1)
-                pa = []
-                levels, lev = [], 0
-                for i in range(raw_token_len):
-                    if raw_tokens[i] == '{':
-                        pre_oper.append(i - 1)
-                        lev += 1
-                    elif raw_tokens[i] == '}':
-                        pre_oper.pop()
-                        lev -= 1
-                    fa = pre_oper.pop()
-                    pa.append(fa)
-                    pre_oper.append(fa)
-                    levels.append(lev)
-                while pos_a != pos_b:
-                    if levels[pos_a] > levels[pos_b]:
-                        pos_a = pa[pos_a]
-                        path_a.append(raw_tokens[pos_a])
-                    else:
-                        pos_b = pa[pos_b]
-                        path_b.append(raw_tokens[pos_b])
-                path_b.pop()
-                outy = ' - '.join(path_a + list(reversed(path_b)))
-                chain_task_in.append(inx)
-                chain_task_out.append(outy)
-                
-            max_level_in_len = max([len(self.encoder.encode(sam)[0]) for sam in level_task_in])
-            max_level_out_len = max([len(self.encoder.encode(sam)[0]) for sam in level_task_out])
-
-            max_chain_in_len = max([len(self.encoder.encode(sam)[0]) for sam in chain_task_in])
-            max_chain_out_len = max([len(self.encoder.encode(sam)[0]) for sam in chain_task_out])
-
         max_topic_len = max([
             len(sample) for sample in cats_list['topic']
         ])
@@ -278,9 +186,6 @@ class DataLoader:
         # ])
         
         max_input_len = min(max_topic_len + max_logic_len + 10, self.man_input_len)
-        if self.all_task:
-            max_level_in_len += max_logic_len + 10
-            max_chain_in_len += max_logic_len + 10
 
 
         batch_data = {
@@ -289,14 +194,6 @@ class DataLoader:
             'dec_len': [],
             'dec_out': [],
             'attention_mask': [],
-
-            'level_enc_in': [],
-            'level_dec_out': [],
-            'level_attention_mask': [],
-            
-            'chain_enc_in': [],
-            'chain_dec_out': [],
-            'chain_attention_mask': [],
         }
 
         description, _ = self.encoder.encode('summary logic: ')
@@ -313,13 +210,6 @@ class DataLoader:
             # target text
             text_len = len(text)
             gold = [1] + text + [self.eos] * (max_text_len - text_len + 1)
-            # text = text + [self.eos] * (max_text_len - text_len)
-            if self.all_task:
-                level_gold, _ = self.encoder.encode(level_task_out[uuu])
-                level_gold = [1] + level_gold + [self.eos] * (max_level_out_len - len(level_gold) + 1)
-
-                chain_gold, _ = self.encoder.encode(chain_task_out[uuu])
-                chain_gold = [1] + chain_gold + [self.eos] * (max_chain_out_len - len(chain_gold) + 1)
 
             # OOM
             if max_text_len > self.man_text_len:
@@ -335,21 +225,6 @@ class DataLoader:
             input = description + topic + [self.empty]
             
             input += logic
-            # not_pad += [1] * len(logic)
-            if self.all_task:
-                level_input, _ = self.encoder.encode(level_task_in[uuu])
-                ll = len(level_input)
-                level_input = level_input + [self.empty] + logic
-                fill_len = max_level_in_len - len(level_input)
-                level_input = [self.empty] * fill_len + [1] + level_input + [self.eos]
-                level_start_pos = fill_len + 1 + ll + 1
-
-                chain_input, _ = self.encoder.encode(chain_task_in[uuu])
-                ll = len(chain_input)
-                chain_input = chain_input + [self.empty] + logic
-                fill_len = max_chain_in_len - len(chain_input)
-                chain_input = [self.empty] * fill_len + [1] + chain_input + [self.eos]
-                chain_start_pos = fill_len + 1 + ll + 1
 
             input = input[:self.man_input_len]
             # not_pad = not_pad[:self.man_input_len]
@@ -456,14 +331,6 @@ class DataLoader:
             '''
             all_relation = np.ones((len(input), len(input)))
             all_relation[start_pos: start_pos + logic_len, start_pos: start_pos + logic_len] = relation_d
-            
-            if self.all_task:
-                level_attention_mask = np.ones((len(level_input), len(level_input)))
-                level_attention_mask[level_start_pos: level_start_pos + logic_len, level_start_pos: level_start_pos + logic_len] = relation_d
-                
-                chain_attention_mask = np.ones((len(chain_input), len(chain_input)))
-                chain_attention_mask[chain_start_pos: chain_start_pos + logic_len, chain_start_pos: chain_start_pos + logic_len] = relation_d
-
 
             batch_data['enc_in'].append(input)
             batch_data['enc_len'].append(input_len)
@@ -473,25 +340,10 @@ class DataLoader:
             batch_data['attention_mask'].append(all_relation)
             # batch_data['drelation'].append(all_relation)
             # batch_data['not_pad'].append(not_pad)
-            if self.all_task:
-                batch_data['level_enc_in'].append(level_input)
-                batch_data['level_dec_out'].append(level_gold)
-                batch_data['level_attention_mask'].append(level_attention_mask)
-
-                batch_data['chain_enc_in'].append(chain_input)
-                batch_data['chain_dec_out'].append(chain_gold)
-                batch_data['chain_attention_mask'].append(chain_attention_mask)
             
             if self.for_train and self.count == 1:
                 print(self.encoder.decode(input))
                 print(self.encoder.decode(gold))
-                
-                print(self.encoder.decode(level_input))
-                print(self.encoder.decode(level_gold))
-
-                print(self.encoder.decode(chain_input))
-                print(self.encoder.decode(chain_gold))
-
         
         for key in batch_data:
             # if key == 'drelation' or key == 'not_pad':

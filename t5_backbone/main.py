@@ -26,6 +26,7 @@ from BLEC.eval.blec import logic_matching
 import argparse
 import re
 
+# argument parser
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', type=str)
 parser.add_argument('--load-ckpt', type=str)
@@ -47,7 +48,7 @@ parser.add_argument('--lr', type=float, default=3e-4)
 parser.add_argument('--alpha', type=float, default=0)
 parser.add_argument('--beta', type=float, default=0)
 parser.add_argument('--prefix-mode', type=str, default='')
-parser.add_argument('--edit-strategy', type=str, choices=['rand', 'rep', 'expand', 'mix', '', 'dtype'], default='')
+parser.add_argument('--edit-strategy', type=str, choices=['rand', 'mix', '', 'dtype'], default='')
 parser.add_argument('--edit-prob', type=float, default=1)
 parser.add_argument('--froze', action='store_true')
 parser.add_argument('--fd', action='store_true')
@@ -59,6 +60,7 @@ parser.add_argument('--seed', type=int, default=17)
 
 args = parser.parse_args()
 
+# set random seed
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 
@@ -91,9 +93,8 @@ def evaluate(enc, pipeline: SequencePipeline, output_path, save_ckpt, valid_iter
 
     with torch.no_grad():
         for batch_dict in valid_t:
-            # model.gpt.zero_grad()
             generated = pipeline.decode_batch(batch_dict, args.prefix_mode).tolist()
-            # decode
+            # convert ids to tokens
             for b_text in generated:
                 seq = enc.decode(b_text)
                 seq = seq.split('<s>')[1].split('</s>')[0]
@@ -102,6 +103,7 @@ def evaluate(enc, pipeline: SequencePipeline, output_path, save_ckpt, valid_iter
                     seq = 'empty .'
                 generated_lines.append(seq)
             
+            # get the original linearized logic form
             for inputs in batch_dict['enc_in'].tolist():
                 seq = enc.decode(inputs)
                 match = re.search(r"summary logic: .+?<pad>(.+ = true)?", seq)
@@ -110,38 +112,16 @@ def evaluate(enc, pipeline: SequencePipeline, output_path, save_ckpt, valid_iter
                 
                 
             # if prefix_mode != '':
+            # append ground truth
             for gold in batch_dict[f'{prefix_mode}dec_out'].tolist():
                 seq = enc.decode(gold)
                 seq = seq.split('<s>')[1].split('</s>')[0]
                 golds.append(seq)
-            # bleu score
+    
     with open(valid_clean_path, 'w') as f:
         f.write('\n'.join(generated_lines))
     
-    if prefix_mode != '':
-        gold_path = os.path.join(output_path, '%s_gold.txt' % mode)
-        with open(gold_path, 'w') as f:
-            f.write('\n'.join(golds))
-        correct = 0
-        for p, t in zip(generated_lines, golds):
-            if p == t:
-                correct += 1
-        acc = correct / len(generated_lines)
-        if writer is not None:
-            writer.add_scalars(f'{mode}', {
-                'acc': acc,
-            }, global_step=step_id)
-            writer.flush()
-        else:
-            print(acc)
-        if best_score < acc:
-            best_score = acc
-            if save_ckpt is not None:
-                save_f = os.path.join(save_ckpt, '%d-%.4f.pt' % (epoch, acc))
-                logging.info('save model checkpoint for %.4f to %s' % (acc, save_f))
-                torch.save(pipeline.model.state_dict(), save_f)
-        return best_score
-    
+    # calculate blec score
     blec_res = []
     for pred_line, logic_line, gold_line in zip(generated_lines, logics, golds):
         errs = logic_matching(logic_line, pred_line, gold_line)
@@ -151,6 +131,7 @@ def evaluate(enc, pipeline: SequencePipeline, output_path, save_ckpt, valid_iter
 
     if epoch is not None:
         logging.info('validation on epoch %d' % epoch)
+    # bleu score
     bleu_ = bleu_score(os.path.join(
         data_path, 'original_data', '%s.text' % mode), valid_clean_path)
     logging.info('bleu: %.4f' % bleu_)
@@ -173,8 +154,8 @@ def evaluate(enc, pipeline: SequencePipeline, output_path, save_ckpt, valid_iter
         logging.warning(e)
     if writer is not None:
         writer.add_scalars(f'{mode} language metric', {
-            'bleu': bleu_,
             'blec': blec_score,
+            'bleu': bleu_,
             'rouge_1': results_dict['rouge_1_f_score'] * 100,
             'rouge_2': results_dict['rouge_2_f_score'] * 100,
             'rouge_4': results_dict['rouge_4_f_score'] * 100,
@@ -182,7 +163,7 @@ def evaluate(enc, pipeline: SequencePipeline, output_path, save_ckpt, valid_iter
         }, global_step=step_id)
         writer.flush()
 
-        # save checkpoint
+        # save checkpoint if the best performance so far
         if blec_score > best_score:
             if save_ckpt is not None:
                 save_f = os.path.join(save_ckpt, '%d-%.4f.pt' % (epoch, blec_score))
@@ -239,6 +220,7 @@ def main():
     org_data = OrgDataMng(args.data_path)
     
     if args.mode == 'resume' or args.mode == 'test':
+        # if there is a checkpoint to load, use 'resume' or 'test'
         # load checkpoint
         logging.info('loading from checkpoint: %s' % args.load_ckpt)
         pipeline.model.load_state_dict(torch.load(args.load_ckpt))
@@ -247,7 +229,7 @@ def main():
         # train processing
         summary_path = os.path.join(output_path, 'summary')
 
-        # make dir
+        # make dir for tensorboard
         if os.path.exists(summary_path):
             shutil.rmtree(summary_path)
         os.makedirs(summary_path, exist_ok=True)
@@ -319,6 +301,7 @@ def main():
         best_cd_score = 0
 
         if args.froze:
+            # froze pretrained model
             for n, p in pipeline.model.named_parameters():
                 if 'block' not in n:
                     p.requires_grad = True
@@ -363,13 +346,7 @@ def main():
                 
                 # train_t.set_postfix_str('loss: %.4f' % )
                 writer.flush()
-                rdnm = np.random.rand()
-                if rdnm < args.alpha:
-                    use_loss = 'level_loss'
-                elif rdnm < args.alpha + args.beta:
-                    use_loss = 'chain_loss'
-                else:
-                    use_loss = 'lm_loss'
+                use_loss = 'lm_loss'
                 total_loss = loss_dict[use_loss]
                 total_loss.backward()
                 optimizer.step()

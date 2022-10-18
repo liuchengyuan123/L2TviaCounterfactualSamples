@@ -38,7 +38,7 @@ cp -r ../logic2text ./
 
 train from scratch
 ```bash
-python main.py --mode=train --edit-strategy=mix --fd
+python main.py --mode=train --edit-strategy=mix
 ```
 
 test on logic2text
@@ -71,7 +71,7 @@ cp -r ../logic2text ./
 
 train from scratch
 ```bash
-python main.py --mode=train --edit-strategy=mix --fd
+python main.py --mode=train --edit-strategy=mix
 ```
 
 test on logic2text
