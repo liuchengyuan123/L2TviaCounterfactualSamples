@@ -92,3 +92,23 @@ If you have any issues or questions about this repo, feel free to contact liucy1
 [Apache License 2.0](./LICENSE) 
 
 
+## Citation
+
+Please cite the following paper if you found our work useful. Thanks!
+
+```bibtex
+@inproceedings{liu-etal-2022-investigating,
+    title = "Investigating the Robustness of Natural Language Generation from Logical Forms via Counterfactual Samples",
+    author = "Liu, Chengyuan  and
+      Gan, Leilei  and
+      Kuang, Kun  and
+      Wu, Fei",
+    booktitle = "Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing",
+    month = dec,
+    year = "2022",
+    address = "Abu Dhabi, United Arab Emirates",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2022.emnlp-main.370",
+    pages = "5499--5512",
+}
+```
