@@ -4,10 +4,6 @@
 This repository contains the data and code for the paper **[Investigating the Robustness of Natural Language Generation from Logical Forms via Counterfactual Samples](https://arxiv.org/abs/2210.08548)**.
 <br>Chengyuan Liu, Leilei Gan, Kun Kuang, Fei Wu</br>
 
-If you find this repository helpful, please cite the following:
-
-<!-- ```tex
-``` -->
 
 ## Requirements
 
